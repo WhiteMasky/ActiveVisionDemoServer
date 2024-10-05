@@ -61,11 +61,18 @@
 #     app.run(host='0.0.0.0', port=5000)
 
 
-
-
 from flask import Flask, request, jsonify, send_file
 import os
 import subprocess
+import logging
+import time
+
+# 配置日志，只输出到控制台
+logging.basicConfig(
+    level=logging.DEBUG,  # 设置日志级别，显示 DEBUG 及以上级别的日志
+    format='%(asctime)s - %(levelname)s - %(message)s',  # 日志格式
+    handlers=[logging.StreamHandler()]  # 只输出到控制台
+)
 
 app = Flask(__name__)
 
@@ -129,16 +136,20 @@ def upload_file():
 
             # 使用 subprocess.run 执行命令
             subprocess.run(command, capture_output=True, text=True)
+            logging.info("完成模型推理了")
 
             # subprocess.run(['python', 'infer_on_video.py', '--input', "uploads/"+uploaded_file_path, '--output', "uploads/"+output_file_path], check=True)
             # 检查处理后的输出文件是否存在
-            # if os.path.exists(output_file_path):
-            #     # 返回处理后的文件
-            #     return send_file(output_file_path, as_attachment=True, download_name='output.mp4')
-            # else:
-            #     return jsonify({'error': 'Processing failed, output file not found'}), 500
+            if os.path.exists(output_file_path):
+                time.sleep(1)
+                logging.warning('文件存在')
+                # 返回处理后的文件
+                return send_file(output_file_path, as_attachment=True, download_name='output.mp4')
+            else:
+                logging.error("直接跳过了")
+                return jsonify({'error': 'Processing failed, output file not found'}), 500
 
-            return send_file(output_file_path, as_attachment=True, download_name='output.mp4')
+            # return send_file(output_file_path, as_attachment=True, download_name='output.mp4')
 
         except subprocess.CalledProcessError as e:
             return jsonify({'error': 'Error during video processing', 'details': str(e)}), 500
