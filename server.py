@@ -94,6 +94,47 @@ def home():
 def favicon():
     return '', 204  # 返回一个空响应
 
+import os
+import mimetypes
+from flask import send_file
+
+
+def debug_file_send(file_path):
+    logging.info(f"Debugging file send for: {file_path}")
+
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        logging.info(f"Error: File does not exist at {file_path}")
+        return
+
+    # 检查文件大小
+    file_size = os.path.getsize(file_path)
+    logging.info(f"File size: {file_size} bytes")
+
+    # 检查文件权限
+    permissions = oct(os.stat(file_path).st_mode)[-3:]
+    logging.info(f"File permissions: {permissions}")
+
+    # 检查MIME类型
+    mime_type, _ = mimetypes.guess_type(file_path)
+    logging.info(f"MIME type: {mime_type}")
+
+    # 尝试打开并读取文件
+    try:
+        with open(file_path, 'rb') as f:
+            content = f.read(1024)  # 读取前1KB
+        logging.info(f"Successfully read {len(content)} bytes from the file")
+    except Exception as e:
+        logging.info(f"Error reading file: {str(e)}")
+
+    # 尝试使用send_file
+    try:
+        response = send_file(file_path, as_attachment=True, download_name='output.mp4')
+        logging.info(f"send_file response: {response}")
+    except Exception as e:
+        logging.info(f"Error in send_file: {str(e)}")
+
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -138,7 +179,11 @@ def upload_file():
             subprocess.run(command, capture_output=True, text=True)
             logging.info("完成模型推理了")
 
+
             # subprocess.run(['python', 'infer_on_video.py', '--input', "uploads/"+uploaded_file_path, '--output', "uploads/"+output_file_path], check=True)
+
+            debug_file_send(output_file_path)
+
             # 检查处理后的输出文件是否存在
             if os.path.exists(output_file_path):
                 time.sleep(1)
@@ -154,6 +199,11 @@ def upload_file():
         except subprocess.CalledProcessError as e:
             return jsonify({'error': 'Error during video processing', 'details': str(e)}), 500
 
+
+
+
+# 使用方法
+# debug_file_send('path/to/your/output.mp4')
 
 if __name__ == '__main__':
     # 使用 HTTP 运行 Flask 服务器，不使用 HTTPS
